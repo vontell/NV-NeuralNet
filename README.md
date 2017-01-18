@@ -36,17 +36,13 @@ After training the neural net, you can provide a .MAT file with the spectra data
 python nv-net.py --classify filename -omit
 ```
 
-<<<<<<< HEAD
-By default, the sample being classified is added to the neural net training data. If you would like to exclude thisdata from being added to the neural network, use the `--omit` flag:
+By default, the sample being classified is added to the neural net training data. The `--omit` flag should be used if you wish to omit this example from the trained neural net (i.e. if no omit flag is given, the neural net will train itself with this new sample):
 
 ```
 python nv-net.py --classify filename --omit
 ```
 
-Note that `filename` is the name of the file with the spectra data without the .MAT extension. Note that the .MAT file must have the following structure:
-=======
-Note that `filename` is the name of the file with the spectra data without the .MAT extension. Note that the .MAT file must have the following structure. The `-omit` flag should be used if you wish to omit this example from the trained neural net (i.e. if no omit flag is given, the neural net will train itself with this new sample).
->>>>>>> ec32275dfcb7b8c4b0acc17dee154e4f7a834230
+Note that `filename` is the name of the file with the spectra data without the .MAT extension. Also note that the .MAT file must have the following structure:
 
 * `x` - 1xL vector which applies to the y values
 * `y` - 1xL vector which are the y values of the spectra sample
