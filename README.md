@@ -1,6 +1,6 @@
 # NV-NeuralNet
 
-These Python scripts can be used to load a .MAT files with NV spectrum data from a Nitrogen-Vacancy scan and classify whether or not it is actually a NV-Center (with a certain probability). This is acheived using a multi-layer perceptron and TensorFlow.
+These Python scripts can be used to load .MAT files with NV spectrum data from Nitrogen-Vacancy scans, and classify whether or not it is actually a NV-Center (with a certain probability). This is acheived using a multi-layer perceptron and TensorFlow.
 
 ### Installation Steps
 To setup this software, simply run the following command:
@@ -33,9 +33,10 @@ This essentially provides us with negative and positive samples which we can use
 After training the neural net, you can provide a .MAT file with the spectra data from an NV scan, which will return a single value [0.0, 1.0] which will be the probability that the given sample is characteristic of an NV center. Use this command in Python:
 
 ```
-python nv-net.py --classify filename
+python nv-net.py --classify filename -omit
 ```
 
+<<<<<<< HEAD
 By default, the sample being classified is added to the neural net training data. If you would like to exclude thisdata from being added to the neural network, use the `--omit` flag:
 
 ```
@@ -43,8 +44,15 @@ python nv-net.py --classify filename --omit
 ```
 
 Note that `filename` is the name of the file with the spectra data without the .MAT extension. Note that the .MAT file must have the following structure:
+=======
+Note that `filename` is the name of the file with the spectra data without the .MAT extension. Note that the .MAT file must have the following structure. The `-omit` flag should be used if you wish to omit this example from the trained neural net (i.e. if no omit flag is given, the neural net will train itself with this new sample).
+>>>>>>> ec32275dfcb7b8c4b0acc17dee154e4f7a834230
 
 * `x` - 1xL vector which applies to the y values
 * `y` - 1xL vector which are the y values of the spectra sample
 
 Note that L must be the same as L in the training data.
+
+#### Using in MATLAB
+
+Coming soon...
