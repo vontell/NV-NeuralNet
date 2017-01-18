@@ -11,6 +11,10 @@ def train_net(filename):
 	data = load_mat_data(filename)
 	print(data)
 	
+def classify(filename):
+	print("Classifying NV spectra from " + filename + ".mat")
+	data = load_mat_data(filename)
+	
 def load_mat_data(filename):
 	'''Loads data from a .mat file. Takes in the filename, without extension'''
 	data = sio.loadmat(filename)
@@ -19,7 +23,10 @@ def load_mat_data(filename):
 # Argument parser logic
 parser = argparse.ArgumentParser()
 parser.add_argument("--train", help="the filename (without .mat extension) to train on")
+parser.add_argument("--classify", help="the filename (without .mat extension) to train on")
 
 args = parser.parse_args()
 if args.train:
     train_net(args.train)
+if args.classify:
+	classify(args.classify)
