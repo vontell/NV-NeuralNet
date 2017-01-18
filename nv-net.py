@@ -5,8 +5,9 @@
 
 import tensorflow as tf
 import scipy.io as sio
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import argparse
+import numpy as np
 
 EPOCHES = 100
 NUM_XS = 2048
@@ -59,23 +60,25 @@ def train_net(filename):
 
     # useful information for training
     x_vals = data["x"][0]
-    good_vals = data["good"]
-    bad_vals = data["bad"]
+    good_vals = data["good"][0:10]
+    bad_vals = data["bad"][0:10]
 
     out, train_op, inputs, actual_output = make_model()
     saver = tf.train.Saver()
     init = tf.initialize_all_variables()
     with tf.Session() as sess:
         sess.run(init)
-        for epoch in EPOCHES:
+        for epoch in range(EPOCHES):
             for inp in good_vals:
-                sess.run(train_op, feed_dict={inputs: [inp], actual_output: [[0, 1]]})
+                inp = np.reshape(inp, (1, NUM_XS))
+                sess.run(train_op, feed_dict={inputs: inp, actual_output: [[0, 1]]})
             for inp in bad_vals:
-                sess.run(train_op, feed_dict={inputs: [inp], actual_output: [[1, 0]]})
+                inp = np.reshape(inp, (1, NUM_XS))
+                sess.run(train_op, feed_dict={inputs: inp, actual_output: [[1, 0]]})
+        
         saver.save(sess, MODEL_PATH)
-
-    plt.plot(x_vals, good_vals[60])
-    plt.show()
+		
+	print("Finished training neural net")
 
 
 def classify(filename, exclude):
@@ -87,7 +90,7 @@ def classify(filename, exclude):
 
     # useful information for training
     x_vals = data["x"]
-    y_vals = data["y"]
+    y_vals = np.transpose(data["y"])
 
     probs = []
 
@@ -95,12 +98,12 @@ def classify(filename, exclude):
     saver = tf.train.Saver()
     with tf.Session() as sess:
         saver.restore(sess, MODEL_PATH)
-        for y_val in y_vals:
-            sample_prob = sess.run(out, feed_dict={inputs: [y_val]})
-            probs.append(sample_prob[1])
+        sample_prob = sess.run(out, feed_dict={inputs: y_vals})
+        print(sample_prob)
+        probs.append(sample_prob[1])
 
-    plt.plot(x_vals, y_vals)
-    plt.show()
+    #plt.plot(x_vals, y_vals)
+    #plt.show()
     return probs
 
 
