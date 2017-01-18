@@ -33,7 +33,7 @@ This essentially provides us with negative and positive samples which we can use
 After training the neural net, you can provide a .MAT file with the spectra data from an NV scan, which will return a single value [0.0, 1.0] which will be the probability that the given sample is characteristic of an NV center. Use this command in Python:
 
 ```
-python nv-net.py --classify filename -omit
+python nv-net.py --classify filename
 ```
 
 By default, the sample being classified is added to the neural net training data. The `--omit` flag should be used if you wish to omit this example from the trained neural net (i.e. if no omit flag is given, the neural net will train itself with this new sample):
