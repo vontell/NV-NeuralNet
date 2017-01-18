@@ -8,6 +8,7 @@ import scipy.io as sio
 #import matplotlib.pyplot as plt
 import argparse
 import numpy as np
+import sys
 
 EPOCHES = 100
 NUM_XS = 2048
@@ -35,21 +36,21 @@ def make_model():
 
     # Layer 1
     fc1 = tf.add(tf.matmul(inputs, weights['wf1']), biases['bf1'])
-    fc1 = tf.nn.relu(fc1)
+    fc1 = tf.nn.sigmoid(fc1)
 
     # Layer 2
     fc2 = tf.add(tf.matmul(fc1, weights['wf2']), biases['bf2'])
-    fc2 = tf.nn.relu(fc2)
+    fc2 = tf.nn.sigmoid(fc2)
 
     # Layer 3
     fc3 = tf.add(tf.matmul(fc2, weights['wf3']), biases['bf3'])
-    fc3 = tf.nn.relu(fc3)
+    fc3 = tf.nn.sigmoid(fc3)
 
     # Output Layer
     out = tf.add(tf.matmul(fc3, weights['wo']), biases['bo'])
     out = tf.nn.softmax(out)
 
-    cross_entropy = tf.reduce_mean(-tf.reduce_sum(actual_output * tf.log(out), reduction_indices=[1]))
+    cross_entropy = tf.reduce_mean(-tf.reduce_sum(actual_output * tf.clip_by_value(out,1e-10,1.0), reduction_indices=[1]))
     train_op = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(cross_entropy)
     return out, train_op, inputs, actual_output
 
@@ -60,8 +61,8 @@ def train_net(filename):
 
     # useful information for training
     x_vals = data["x"][0]
-    good_vals = data["good"][0:10]
-    bad_vals = data["bad"][0:10]
+    good_vals = data["good"]
+    bad_vals = data["bad"]
 
     out, train_op, inputs, actual_output = make_model()
     saver = tf.train.Saver()
@@ -99,8 +100,7 @@ def classify(filename, exclude):
     with tf.Session() as sess:
         saver.restore(sess, MODEL_PATH)
         sample_prob = sess.run(out, feed_dict={inputs: y_vals})
-        print(sample_prob)
-        probs.append(sample_prob[1])
+        probs.append(sample_prob[0])
 
     #plt.plot(x_vals, y_vals)
     #plt.show()
@@ -125,4 +125,4 @@ args = parser.parse_args()
 if args.train:
     train_net(args.train)
 if args.classify:
-    classify(args.classify, args.omit)
+    print(classify(args.classify, args.omit))
