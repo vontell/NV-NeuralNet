@@ -3,88 +3,84 @@
 # Authors: Aaron Vontell and Elijah Stiles
 # Date: January 17th, 2017
 
-import tensorflow as tf
 import scipy.io as sio
 #import matplotlib.pyplot as plt
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout
+from keras.layers.recurrent import SimpleRNN
+from keras.optimizers import SGD
 import argparse
 import numpy as np
+import os.path
 import sys
 
-EPOCHES = 100
+EPOCHES = 50
 NUM_XS = 2048
-NUM_NEURONS = 512
+NUM_NEURONS = 2048
 LEARNING_RATE = .001
-MODEL_PATH = "./models/network.txt"
+MAX = 1500
+MODEL_PATH = "./models/network.hdf5"
 
 
 def make_model():
-    weights = {
-        'wf1': tf.Variable(tf.random_normal([NUM_XS, NUM_NEURONS], stddev=np.sqrt(2. / NUM_XS))),
-        #'wf2': tf.Variable(tf.random_normal([NUM_NEURONS, NUM_NEURONS], stddev=np.sqrt(2. / NUM_NEURONS))),
-        'wf3': tf.Variable(tf.random_normal([NUM_NEURONS, NUM_NEURONS], stddev=np.sqrt(2. / NUM_NEURONS))),
-        'wo': tf.Variable(tf.random_normal([NUM_NEURONS, 2], stddev=np.sqrt(2. / NUM_NEURONS)))
-    }
-    biases = {
-        'bf1': tf.Variable(tf.zeros(NUM_NEURONS)),
-        #'bf2': tf.Variable(tf.zeros(NUM_NEURONS)),
-        'bf3': tf.Variable(tf.zeros(NUM_NEURONS)),
-        'bo': tf.Variable(tf.zeros(2))
-    }
-
-    inputs = tf.placeholder(tf.float32, [None, NUM_XS])
-    actual_output = tf.placeholder(tf.float32, [None, 2])
-
-    # Layer 1
-    fc1 = tf.add(tf.matmul(inputs, weights['wf1']), biases['bf1'])
-    fc1 = tf.nn.relu(fc1)
-
-    # Layer 2
-    #fc2 = tf.add(tf.matmul(fc1, weights['wf2']), biases['bf2'])
-    #fc2 = tf.nn.relu(fc2)
-
-    # Layer 3
-    fc3 = tf.add(tf.matmul(fc1, weights['wf3']), biases['bf3'])
-    fc3 = tf.nn.relu(fc3)
-
-    # Output Layer
-    out = tf.add(tf.matmul(fc3, weights['wo']), biases['bo'])
-    out = tf.nn.softmax(out)
-
-    cross_entropy = tf.reduce_mean(-tf.reduce_sum(actual_output * tf.clip_by_value(out,1e-10,1.0), reduction_indices=[1]))
-    train_op = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(cross_entropy)
-    return out, train_op, inputs, actual_output
-
+    
+    # Make the model here
+    model = Sequential()
+    model.add(Dense(output_dim=NUM_XS, input_dim=NUM_XS, init='uniform'))
+    model.add(Activation("relu"))
+    model.add(Dense(output_dim=2))
+    model.add(Activation("sigmoid"))
+    model.compile(loss='binary_crossentropy', optimizer="sgd", metrics=['accuracy'])
+    return model
 
 def train_net(filename):
     print("Training neural net on " + filename + ".mat")
     data = load_mat_data(filename)
 
     # useful information for training
-    x_vals = data["x"][0]
     good_vals = data["good"]
     bad_vals = data["bad"]
     
     data = []
     for val in good_vals:
-        data.append((1, val))
+        binary = [float(i)/MAX for i in val]
+        data.append((1, binary))
     for val in bad_vals:
-        data.append((0, val))
-
-    out, train_op, inputs, actual_output = make_model()
-    saver = tf.train.Saver()
-    init = tf.initialize_all_variables()
-    with tf.Session() as sess:
-        sess.run(init)
-        for epoch in range(EPOCHES):
-            np.random.shuffle(data)
-            for tup in data:
-                inp = np.reshape(tup[1], (1, NUM_XS))
-                classif = [[1, 0]] if tup[0] == 0 else [[0, 1]]
-                sess.run(train_op, feed_dict={inputs: inp, actual_output: classif})
+        binary = [float(i)/MAX for i in val]
+        data.append((0, binary))
+    np.random.shuffle(data)
+    
+    X_train = []
+    Y_train = []
+    
+    for val in data:
+        X_train.append(np.reshape(val[1], (1, NUM_XS)))
+        classif = [0, 1] if val[0] == 1 else [1, 0]
+        Y_train.append(np.reshape(classif, (1,2)))
         
-        saver.save(sess, MODEL_PATH)
+    # Train the net here
+    model = make_model()
+    if os.path.isfile(MODEL_PATH):
+        pass#model.load_weights(MODEL_PATH)
+    
+    print(Y_train[0][0])
+    #plt.plot(range(2048), X_train[0][0])
+    #plt.show()
+    model.fit(X_train[0], Y_train[0], nb_epoch=EPOCHES, batch_size=NUM_XS)
+    
+    loss_and_metrics = model.evaluate(X_train[0], Y_train[0], batch_size=1)
+    print(loss_and_metrics)
+    
+    for val in data[0:10]:
+        x_val = np.reshape(val[1], (1, NUM_XS))
+        print(x_val)
+        classif = [0, 1] if val[0] == 1 else [1, 0]
+        prob = model.predict_proba(x_val, batch_size=NUM_XS)
+        print("Expected: ", classif, "\tActual: ", prob)
+            
+    model.save_weights(MODEL_PATH)
         
-    print("Finished training neural net")
+    print("Finished training neural net, saved net to ", MODEL_PATH, ".hdf5")
 
 def classify(filename, exclude):
     print("Classifying NV spectra from " + filename + ".mat")
@@ -96,52 +92,51 @@ def classify(filename, exclude):
     # useful information for training
     x_vals = data["x"]
     y_vals = np.transpose(data["y"])
-    print(y_vals)
-
-    probs = []
-
-    out, train_op, inputs, actual_output = make_model()
-    saver = tf.train.Saver()
-    with tf.Session() as sess:
-        saver.restore(sess, MODEL_PATH)
-        sample_prob = sess.run(out, feed_dict={inputs: y_vals})
-        probs.append(sample_prob[0])
-
-    #plt.plot(x_vals, y_vals)
-    #plt.show()
+    
+    # Classify the data here
+    
     return probs
 
-def verify(filename):
+def evaluate(filename):
 
+    print("Evaluating neural net on part of " + filename + ".mat")
+        
+    # Train the net here
+    model = make_model()
+    if os.path.isfile(MODEL_PATH):
+        model.load_weights(MODEL_PATH)
+    else:
+        print("There is no saved net available! Try training first.")
+    
     data = load_mat_data(filename)
 
     # useful information for training
-    x_vals = data["x"][0]
-    good_vals = data["good"][0:10]
-    bad_vals = data["bad"][0:10]
-
-    probs = []
-
-    out, train_op, inputs, actual_output = make_model()
-    saver = tf.train.Saver()
-    with tf.Session() as sess:
-        saver.restore(sess, MODEL_PATH)
-        for y_vals in good_vals:
-            y_vals = np.transpose(y_vals)
-            print(y_vals)
-            sample_prob = sess.run(out, feed_dict={inputs: [y_vals]})
-            print(sample_prob)
-            probs.append(sample_prob[0])
-        for y_vals in bad_vals:
-            y_vals = np.transpose(y_vals)
-            print(y_vals)
-            sample_prob = sess.run(out, feed_dict={inputs: [y_vals]})
-            print(sample_prob)
-            probs.append(sample_prob[0])
-
-    #plt.plot(x_vals, y_vals)
-    #plt.show()
-    return probs
+    good_vals = data["good"]
+    bad_vals = data["bad"]
+    
+    data = []
+    for val in good_vals:
+        binary = [float(i)/MAX for i in val]
+        data.append((1, binary))
+    for val in bad_vals:
+        binary = [float(i)/MAX for i in val]
+        data.append((0, binary))
+    np.random.shuffle(data)
+    
+    X_train = []
+    Y_train = []
+    
+    for val in data[0:10]:
+        x_val = np.reshape(val[1], (1, NUM_XS))
+        print(x_val)
+        classif = [0, 1] if val[0] == 1 else [1, 0]
+        prob = model.predict_proba(x_val, batch_size=1)
+        print("Expected: ", classif, "\tActual: ", prob)
+    
+    #loss_and_metrics = model.evaluate(X_train[0:10], Y_train[0:10], batch_size=1)
+    #print(loss_and_metrics)
+        
+    print("Finished evaluating neural net")
 
 def load_mat_data(filename):
     '''Loads data from a .mat file. Takes in the filename, without extension'''
@@ -162,5 +157,3 @@ if args.train:
     train_net(args.train)
 if args.classify:
     print(classify(args.classify, args.omit))
-
-verify("training_data")

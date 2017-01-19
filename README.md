@@ -9,7 +9,7 @@ To setup this software, simply run the following command:
 sudo pip install -r requirements.txt
 ```
 
-This will install `scipy` for MATLAB interaction, and Tensor Flow for the actual Neural Net.
+This will install `numpy`, `scipy` for MATLAB interaction, and Keras/Theano for the actual Neural Network. *Note that some operating systems may require [special installation instructions for Theano](http://deeplearning.net/software/theano/install.html).*
 
 ### Usage Instructions
 Usage of this software can also be seen with `python nv-net.py -h`, but here are some more detailed instructions:
