@@ -20,13 +20,13 @@ MODEL_PATH = "./models/network.txt"
 def make_model():
     weights = {
         'wf1': tf.Variable(tf.random_normal([NUM_XS, NUM_NEURONS], stddev=np.sqrt(2. / NUM_XS))),
-        'wf2': tf.Variable(tf.random_normal([NUM_NEURONS, NUM_NEURONS], stddev=np.sqrt(2. / NUM_NEURONS))),
+        #'wf2': tf.Variable(tf.random_normal([NUM_NEURONS, NUM_NEURONS], stddev=np.sqrt(2. / NUM_NEURONS))),
         'wf3': tf.Variable(tf.random_normal([NUM_NEURONS, NUM_NEURONS], stddev=np.sqrt(2. / NUM_NEURONS))),
         'wo': tf.Variable(tf.random_normal([NUM_NEURONS, 2], stddev=np.sqrt(2. / NUM_NEURONS)))
     }
     biases = {
         'bf1': tf.Variable(tf.zeros(NUM_NEURONS)),
-        'bf2': tf.Variable(tf.zeros(NUM_NEURONS)),
+        #'bf2': tf.Variable(tf.zeros(NUM_NEURONS)),
         'bf3': tf.Variable(tf.zeros(NUM_NEURONS)),
         'bo': tf.Variable(tf.zeros(2))
     }
@@ -36,15 +36,15 @@ def make_model():
 
     # Layer 1
     fc1 = tf.add(tf.matmul(inputs, weights['wf1']), biases['bf1'])
-    fc1 = tf.nn.sigmoid(fc1)
+    fc1 = tf.nn.relu(fc1)
 
     # Layer 2
-    fc2 = tf.add(tf.matmul(fc1, weights['wf2']), biases['bf2'])
-    fc2 = tf.nn.sigmoid(fc2)
+    #fc2 = tf.add(tf.matmul(fc1, weights['wf2']), biases['bf2'])
+    #fc2 = tf.nn.relu(fc2)
 
     # Layer 3
-    fc3 = tf.add(tf.matmul(fc2, weights['wf3']), biases['bf3'])
-    fc3 = tf.nn.sigmoid(fc3)
+    fc3 = tf.add(tf.matmul(fc1, weights['wf3']), biases['bf3'])
+    fc3 = tf.nn.relu(fc3)
 
     # Output Layer
     out = tf.add(tf.matmul(fc3, weights['wo']), biases['bo'])
@@ -63,6 +63,12 @@ def train_net(filename):
     x_vals = data["x"][0]
     good_vals = data["good"]
     bad_vals = data["bad"]
+    
+    data = []
+    for val in good_vals:
+        data.append((1, val))
+    for val in bad_vals:
+        data.append((0, val))
 
     out, train_op, inputs, actual_output = make_model()
     saver = tf.train.Saver()
@@ -70,17 +76,15 @@ def train_net(filename):
     with tf.Session() as sess:
         sess.run(init)
         for epoch in range(EPOCHES):
-            for inp in good_vals:
-                inp = np.reshape(inp, (1, NUM_XS))
-                sess.run(train_op, feed_dict={inputs: inp, actual_output: [[0, 1]]})
-            for inp in bad_vals:
-                inp = np.reshape(inp, (1, NUM_XS))
-                sess.run(train_op, feed_dict={inputs: inp, actual_output: [[1, 0]]})
+            np.random.shuffle(data)
+            for tup in data:
+                inp = np.reshape(tup[1], (1, NUM_XS))
+                classif = [[1, 0]] if tup[0] == 0 else [[0, 1]]
+                sess.run(train_op, feed_dict={inputs: inp, actual_output: classif})
         
         saver.save(sess, MODEL_PATH)
-		
-	print("Finished training neural net")
-
+        
+    print("Finished training neural net")
 
 def classify(filename, exclude):
     print("Classifying NV spectra from " + filename + ".mat")
@@ -92,6 +96,7 @@ def classify(filename, exclude):
     # useful information for training
     x_vals = data["x"]
     y_vals = np.transpose(data["y"])
+    print(y_vals)
 
     probs = []
 
@@ -106,6 +111,37 @@ def classify(filename, exclude):
     #plt.show()
     return probs
 
+def verify(filename):
+
+    data = load_mat_data(filename)
+
+    # useful information for training
+    x_vals = data["x"][0]
+    good_vals = data["good"][0:10]
+    bad_vals = data["bad"][0:10]
+
+    probs = []
+
+    out, train_op, inputs, actual_output = make_model()
+    saver = tf.train.Saver()
+    with tf.Session() as sess:
+        saver.restore(sess, MODEL_PATH)
+        for y_vals in good_vals:
+            y_vals = np.transpose(y_vals)
+            print(y_vals)
+            sample_prob = sess.run(out, feed_dict={inputs: [y_vals]})
+            print(sample_prob)
+            probs.append(sample_prob[0])
+        for y_vals in bad_vals:
+            y_vals = np.transpose(y_vals)
+            print(y_vals)
+            sample_prob = sess.run(out, feed_dict={inputs: [y_vals]})
+            print(sample_prob)
+            probs.append(sample_prob[0])
+
+    #plt.plot(x_vals, y_vals)
+    #plt.show()
+    return probs
 
 def load_mat_data(filename):
     '''Loads data from a .mat file. Takes in the filename, without extension'''
@@ -126,3 +162,5 @@ if args.train:
     train_net(args.train)
 if args.classify:
     print(classify(args.classify, args.omit))
+
+verify("training_data")
