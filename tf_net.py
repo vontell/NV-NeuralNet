@@ -189,22 +189,13 @@ def train_net(filename, overwrite, should_graph):
     
     # Otherwise, we train and save the model
     
+    # Prepare to save the model
+    saver = tf.train.Saver()
+    
     # Load the data
-    data = sio.loadmat(filename)
-    good_vals = data["good"]
-    bad_vals = data["bad"]
+    data, labels = load_data(filename)
     
-    # Shuffle the data for "fair weighting"
-    data = []
-    for val in good_vals:
-        data.append((1, [[[v]] for v in reduce_by_mean(val[900:1000])]))
-    for val in bad_vals:
-        data.append((0, [[[v]] for v in reduce_by_mean(val[900:1000])]))
-    np.random.shuffle(data)
-    
-    # Create labels and batches for training
-    labels = np.array([int(i[0]) for i in data])
-    data = np.array([np.array(i[1]) for i in data])
+    # Create batches
     assert validation_set_size <= len(data), 'validation_set_size must be smaller than len(data)'
 
     training_data = data[:len(data) - validation_set_size]
@@ -320,6 +311,8 @@ def train_net(filename, overwrite, should_graph):
                     max_accuracy = validation_accuracy
                     max_accuracy_weights = weights_val
                     max_accuracy_biases = biases_val
+                    # Save weights
+                    saver.save(session, 'model')
 
                 if len(max_accuracy_values) == accuracy_saved_iterations:
                     max_accuracy_values.pop(0)
@@ -358,9 +351,37 @@ def train_net(filename, overwrite, should_graph):
                 plt.show()
                 plt.pause(0)
     
-
+def load_data(filename):
+    # Load the data
+    data = sio.loadmat(filename)
+    good_vals = data["good"]
+    bad_vals = data["bad"]
+    
+    # Shuffle the data for "fair weighting"
+    data = []
+    for val in good_vals:
+        data.append((1, [[[v]] for v in reduce_by_mean(val[900:1000])]))
+    for val in bad_vals:
+        data.append((0, [[[v]] for v in reduce_by_mean(val[900:1000])]))
+    np.random.shuffle(data)
+    
+    # Create batches for training
+    labels = np.array([int(i[0]) for i in data])
+    data = np.array([np.array(i[1]) for i in data])
+    
+    return data, labels
+    
 def classify(filename, exclude):
-    pass
+    # Load data
+    data, labels = load_data(filename)
+        
+    # Load weights and run session
+    with tf.Session(config=config) as session:
+        saver = tf.train.import_meta_graph('model.meta')
+        saver.restore(session, tf.train.latest_checkpoint('./'))
+        out_val = session.run(out, feed_dict={x: data, y: labels})
+        return out_val
+        # Will need to apply softmax to get classification
 
 def model_exists():
     return False
