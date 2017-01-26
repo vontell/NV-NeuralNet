@@ -4,7 +4,7 @@
 # Date: January 17th, 2017
 
 import scipy.io as sio
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Dropout, Flatten
 from keras.layers.convolutional import Convolution1D
@@ -118,12 +118,14 @@ def classify(filename, exclude):
         print("Excluding this spectra from the training data")
 
     data = load_mat_data(filename)
-
+    print(data)
     # useful information for training
     x_vals = data["x"]
-    y_vals = np.transpose(data["y"])
+    y_vals = data["y"]
     
     # Classify the data here
+    plt.plot(x_vals, y_vals)
+    plt.show()
     
     return probs
 

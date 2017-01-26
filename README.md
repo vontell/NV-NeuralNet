@@ -4,6 +4,10 @@ These Python scripts can be used to load .MAT files with NV spectrum data from N
 
 **Most recent results obtain an accuracy of 92.11%**
 
+## Neural Net Design
+
+![Neural Net Diagram](https://github.com/vontell/NV-NeuralNet/blob/master/imgs/diagram.png)
+
 ### Installation Steps
 To setup this software, simply run the following command:
 
