@@ -25,6 +25,7 @@ import math
 import time
 from display_utils import DynamicConsoleTable
 import argparse
+import os.path
 
 ###############################################################################
 
@@ -39,7 +40,7 @@ max_epochs = 3000
 batch_size = 190 # 228 - validation_set_size
 validation_set_size = 38
 learning_rate = 0.01
-dropout = 1.0 # 1.0 = no dropout
+dropout = 0.75 # 1.0 = no dropout
 loss_threshold = 1e-12
 decay_rate = 0.30 # Exponential decay used to calculate sustained loss
 use_GPU = True # Use CUDA acceleration
@@ -189,9 +190,6 @@ def train_net(filename, overwrite, should_graph):
     
     # Otherwise, we train and save the model
     
-    # Prepare to save the model
-    saver = tf.train.Saver()
-    
     # Load the data
     data, labels = load_data(filename)
     
@@ -312,6 +310,9 @@ def train_net(filename, overwrite, should_graph):
                     max_accuracy_weights = weights_val
                     max_accuracy_biases = biases_val
                     # Save weights
+                    tf.add_to_collection("vars", out)
+                    tf.add_to_collection("vars", x)
+                    saver = tf.train.Saver()
                     saver.save(session, 'model')
 
                 if len(max_accuracy_values) == accuracy_saved_iterations:
@@ -349,7 +350,7 @@ def train_net(filename, overwrite, should_graph):
                 plt.plot(np.sum([max_accuracy_weights['out'][k*n:(k+1)*n,1] for k in range(num_kernels)], axis = 0))
                 #plt.plot(np.sum([weights_val['out'][0:1*n,1], weights_val['out'][1*n:2*n,1], weights_val['out'][2*n:3*n,1], weights_val['out'][3*n:4*n,1], weights_val['out'][4*n:5*n,1], weights_val['out'][5*n:6*n,1]], axis=0))
                 plt.show()
-                plt.pause(0)
+                plt.pause(0)                
     
 def load_data(filename):
     # Load the data
@@ -373,18 +374,25 @@ def load_data(filename):
     
 def classify(filename, exclude):
     # Load data
-    data, labels = load_data(filename)
+    data = sio.loadmat(filename)
+    ys = data["y"]
+    plt.plot(ys)
+    plt.pause(0)
+    data = [[[v] for v in reduce_by_mean(ys[900:1000])]]
         
     # Load weights and run session
+    config = tf.ConfigProto(device_count = {'GPU': 1 if use_GPU == True else 0})
     with tf.Session(config=config) as session:
         saver = tf.train.import_meta_graph('model.meta')
         saver.restore(session, tf.train.latest_checkpoint('./'))
-        out_val = session.run(out, feed_dict={x: data, y: labels})
+        out = tf.get_collection("vars")[0]
+        x = tf.get_collection("vars")[1]
+        out_val = session.run(out, feed_dict={x: data})
         return out_val
         # Will need to apply softmax to get classification
 
 def model_exists():
-    return False
+    return os.path.isfile("model.meta") 
 
 def reduce_by_mean(a):
     avg = float(sum(a)) / len(a)
